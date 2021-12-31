@@ -163,35 +163,32 @@ impl Compiler {
         Compiler {}
     }
 
-    fn tokenize<'a>(&self, program: &'a str) -> Vec<String> {
+    fn tokenize(&self, program: &str) -> Vec<String> {
         let mut tokens: Vec<String> = vec![];
-
         let mut iter = program.chars().peekable();
-        loop {
-            match iter.peek() {
-                Some(&c) => match c {
-                    'a'..='z' | 'A'..='Z' => {
-                        let mut tmp = String::new();
-                        while iter.peek().is_some() && iter.peek().unwrap().is_alphabetic() {
-                            tmp.push(iter.next().unwrap());
-                        }
-                        tokens.push(tmp);
+
+        while let Some(&c) = iter.peek() {
+            match c {
+                'a'..='z' | 'A'..='Z' => {
+                    let mut tmp = String::new();
+                    while iter.peek().is_some() && iter.peek().unwrap().is_alphabetic() {
+                        tmp.push(iter.next().unwrap());
                     }
-                    '0'..='9' => {
-                        let mut tmp = String::new();
-                        while iter.peek().is_some() && iter.peek().unwrap().is_numeric() {
-                            tmp.push(iter.next().unwrap());
-                        }
-                        tokens.push(tmp);
+                    tokens.push(tmp);
+                }
+                '0'..='9' => {
+                    let mut tmp = String::new();
+                    while iter.peek().is_some() && iter.peek().unwrap().is_numeric() {
+                        tmp.push(iter.next().unwrap());
                     }
-                    ' ' => {
-                        iter.next();
-                    }
-                    _ => {
-                        tokens.push(iter.next().unwrap().to_string());
-                    }
-                },
-                None => break,
+                    tokens.push(tmp);
+                }
+                ' ' => {
+                    iter.next();
+                }
+                _ => {
+                    tokens.push(iter.next().unwrap().to_string());
+                }
             }
         }
 
