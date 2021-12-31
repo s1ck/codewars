@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::{collections::HashMap, iter::Peekable, vec::IntoIter};
 
 #[derive(Debug, PartialEq)]
@@ -56,6 +57,55 @@ impl Ast {
                 }
             }
             Self::UnOp(op, n) => Self::UnOp(op.clone(), *n),
+        }
+    }
+
+    // "IM n"     // load the constant value n into R0
+    // "AR n"     // load the n-th input argument into R0
+    // "SW"       // swap R0 and R1
+    // "PU"       // push R0 onto the stack
+    // "PO"       // pop the top value off of the stack into R0
+    // "AD"       // add R1 to R0 and put the result in R0
+    // "SU"       // subtract R1 from R0 and put the result in R0
+    // "MU"       // multiply R0 by R1 and put the result in R0
+    // "DI"       // divide R0 by R1 and put the result in R0
+    fn transform(&self) -> Vec<String> {
+        match self {
+            Self::BinOp(op, lhs, rhs) => {
+                let bin_left = matches!(**lhs, Self::BinOp(_, _, _));
+
+                let mut res = rhs.transform();
+
+                if bin_left {
+                    res.push("PU".to_string())
+                } else {
+                    res.push("SW".to_string())
+                }
+
+                res.extend(lhs.transform());
+
+                if bin_left {
+                    res.push("SW".to_string());
+                    res.push("PO".to_string());
+                    res.push("SW".to_string());
+                }
+
+                let op = match op.as_str() {
+                    "*" => "MU".to_string(),
+                    "/" => "DI".to_string(),
+                    "+" => "AD".to_string(),
+                    "-" => "SU".to_string(),
+                    _ => unreachable!(),
+                };
+
+                res.push(op);
+
+                res
+            }
+
+            Self::UnOp(op, n) if op == "imm" => vec![format!("IM {}", n)],
+            Self::UnOp(op, n) if op == "arg" => vec![format!("AR {}", n)],
+            _ => unreachable!(),
         }
     }
 }
@@ -240,8 +290,7 @@ impl Compiler {
     }
 
     fn pass3(&mut self, ast: &Ast) -> Vec<String> {
-        todo!()
-        // your code
+        ast.transform()
     }
 }
 
@@ -250,7 +299,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_pass1_binary() {
+    fn test_pass1_1() {
         let input = "[ first second ] (first + second) / 2";
 
         let mut c = Compiler::new();
@@ -263,7 +312,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pass1_nary() {
+    fn test_pass1_2() {
         let input = "[ x y z ] ( 2*3*x + 5*y - 3*z ) / (1 + 3 + 2*2)";
 
         let mut c = Compiler::new();
@@ -311,9 +360,104 @@ mod tests {
     }
 
     #[test]
+    fn test_pass3_1() {
+        let input = "[ x ] x + 2*5";
+        let mut c = Compiler::new();
+        let ast = c.pass1(input);
+        let ast = c.pass2(&ast);
+        let asm = c.pass3(&ast);
+
+        assert_eq!(
+            asm,
+            vec![
+                "IM 10".to_string(),
+                "SW".to_string(),
+                "AR 0".to_string(),
+                "AD".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn test_pass3_2() {
+        let input = "[ x y ] 6 * x + 5 * y";
+        let mut c = Compiler::new();
+        let ast = c.pass1(input);
+        let ast = c.pass2(&ast);
+        let asm = c.pass3(&ast);
+
+        assert_eq!(simulate(asm, vec![4, 2]), 34);
+    }
+
+    #[test]
+    fn test_pass3_3() {
+        let input = "[ x ] 6 * ( x + 42 )";
+        let mut c = Compiler::new();
+        let ast = c.pass1(input);
+        let ast = c.pass2(&ast);
+        let asm = c.pass3(&ast);
+
+        assert_eq!(simulate(asm, vec![8]), 300);
+    }
+
+    #[test]
+    fn test_pass3_4() {
+        let input = "[ x y z ] ( 2*3*x + 5*y - 3*z ) / (1 + 3 + 2*2)";
+        let mut c = Compiler::new();
+        let ast = c.pass1(input);
+        let asm = c.pass3(&ast);
+
+        assert_eq!(simulate(asm, vec![4, 6, 2]), 48 / 8);
+    }
+
+    #[test]
     fn simulator() {
         assert_eq!(simulate(vec!["IM 7".to_string()], vec![3]), 7);
         assert_eq!(simulate(vec!["AR 1".to_string()], vec![1, 2, 3]), 2);
+
+        // [ x y ] 6 * x + 5 * y
+        assert_eq!(
+            simulate(
+                vec![
+                    "IM 6".to_string(),
+                    "SW".to_string(),
+                    "AR 0".to_string(),
+                    "MU".to_string(),
+                    "PU".to_string(),
+                    "IM 5".to_string(),
+                    "SW".to_string(),
+                    "AR 1".to_string(),
+                    "MU".to_string(),
+                    "SW".to_string(),
+                    "PO".to_string(),
+                    "AD".to_string(),
+                ],
+                vec![4, 2]
+            ),
+            34
+        );
+
+        // [ x ] 6 * (x + 42)
+        // Mul(6, Add(x + 42))
+        assert_eq!(
+            simulate(
+                vec![
+                    "IM 6".to_string(),
+                    "PU".to_string(),
+                    "AR 0".to_string(),
+                    "SW".to_string(),
+                    "IM 42".to_string(),
+                    "AD".to_string(),
+                    "PU".to_string(),
+                    "PO".to_string(),
+                    "SW".to_string(),
+                    "PO".to_string(),
+                    "MU".to_string(),
+                ],
+                vec![8]
+            ),
+            300
+        );
     }
 
     fn simulate(assembly: Vec<String>, argv: Vec<i32>) -> i32 {
