@@ -1,0 +1,9 @@
+[package]
+name = "tiny_three_pass_compiler"
+authors = ["Martin Junghanns <github@s1ck.dev>"]
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
