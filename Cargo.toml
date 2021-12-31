@@ -1,0 +1,14 @@
+[package]
+name = "codewars"
+version = "0.1.0"
+authors = ["Martin Junghanns <github@s1ck.dev>"]
+description = "Solutions for some Codewars Katas"
+edition = "2021"
+license = "MIT"
+
+[workspace]
+
+members = [
+  "tiny_three_pass_compiler", # https://www.codewars.com/kata/5265b0885fda8eac5900093b
+]
+
