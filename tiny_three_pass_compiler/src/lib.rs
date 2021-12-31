@@ -30,6 +30,34 @@ impl Ast {
     fn div(lhs: Self, rhs: Self) -> Self {
         Self::BinOp("/".to_string(), Box::new(lhs), Box::new(rhs))
     }
+
+    // constant folding
+    fn fold(&self) -> Ast {
+        match self {
+            Self::BinOp(op, lhs, rhs) => {
+                let lhs = lhs.fold();
+                let rhs = rhs.fold();
+
+                match (&lhs, &rhs) {
+                    (Self::UnOp(cmd_lhs, n_lhs), Self::UnOp(cmd_rhs, n_rhs))
+                        if cmd_lhs == "imm" && cmd_rhs == "imm" =>
+                    {
+                        let n = match op.as_str() {
+                            "+" => n_lhs + n_rhs,
+                            "-" => n_lhs - n_rhs,
+                            "*" => n_lhs * n_rhs,
+                            "/" => n_lhs / n_rhs,
+                            _ => unreachable!(),
+                        };
+
+                        Self::imm(n)
+                    }
+                    _ => Self::BinOp(op.clone(), Box::new(lhs), Box::new(rhs)),
+                }
+            }
+            Self::UnOp(op, n) => Self::UnOp(op.clone(), *n),
+        }
+    }
 }
 
 type TokenStream = Peekable<IntoIter<String>>;
@@ -208,8 +236,7 @@ impl Compiler {
     }
 
     fn pass2(&mut self, ast: &Ast) -> Ast {
-        todo!()
-        // your code
+        ast.fold()
     }
 
     fn pass3(&mut self, ast: &Ast) -> Vec<String> {
@@ -256,6 +283,29 @@ mod tests {
                     Ast::add(Ast::imm(1), Ast::imm(3)),
                     Ast::mul(Ast::imm(2), Ast::imm(2))
                 )
+            )
+        );
+    }
+
+    #[test]
+    fn test_pass2() {
+        let input = "[ x y z ] ( 2*3*x + 5*y - 3*z ) / (1 + 3 + 2*2)";
+
+        let mut c = Compiler::new();
+        let ast = c.pass1(input);
+        let ast = c.pass2(&ast);
+
+        assert_eq!(
+            ast,
+            Ast::div(
+                Ast::sub(
+                    Ast::add(
+                        Ast::mul(Ast::imm(6), Ast::arg(0)),
+                        Ast::mul(Ast::imm(5), Ast::arg(1))
+                    ),
+                    Ast::mul(Ast::imm(3), Ast::arg(2))
+                ),
+                Ast::imm(8)
             )
         );
     }
