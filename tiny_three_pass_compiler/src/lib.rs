@@ -8,31 +8,10 @@ enum Ast {
 }
 
 impl Ast {
-    fn imm(n: usize) -> Self {
-        Self::UnOp("imm".to_string(), n)
-    }
-
-    fn arg(idx: usize) -> Self {
-        Self::UnOp("arg".to_string(), idx)
-    }
-
-    fn add(lhs: Self, rhs: Self) -> Self {
-        Self::BinOp("+".to_string(), Box::new(lhs), Box::new(rhs))
-    }
-
-    fn sub(lhs: Self, rhs: Self) -> Self {
-        Self::BinOp("-".to_string(), Box::new(lhs), Box::new(rhs))
-    }
-
-    fn mul(lhs: Self, rhs: Self) -> Self {
-        Self::BinOp("*".to_string(), Box::new(lhs), Box::new(rhs))
-    }
-
-    fn div(lhs: Self, rhs: Self) -> Self {
-        Self::BinOp("/".to_string(), Box::new(lhs), Box::new(rhs))
-    }
-
-    // constant folding
+    // Simplifies the AST by applying constant folding,
+    // i.e., evaluating binary expression where both
+    // inputs are immediate values. Folding is applied
+    // bottom-up, requiring only one pass over the AST.
     fn fold(&self) -> Ast {
         match self {
             Self::BinOp(op, lhs, rhs) => {
@@ -51,7 +30,7 @@ impl Ast {
                             _ => unreachable!(),
                         };
 
-                        Self::imm(n)
+                        Self::UnOp("imm".to_string(), n)
                     }
                     _ => Self::BinOp(op.clone(), Box::new(lhs), Box::new(rhs)),
                 }
@@ -60,6 +39,8 @@ impl Ast {
         }
     }
 
+    // Transforms the AST into the following assembly language
+    //
     // "IM n"     // load the constant value n into R0
     // "AR n"     // load the n-th input argument into R0
     // "SW"       // swap R0 and R1
@@ -69,25 +50,27 @@ impl Ast {
     // "SU"       // subtract R1 from R0 and put the result in R0
     // "MU"       // multiply R0 by R1 and put the result in R0
     // "DI"       // divide R0 by R1 and put the result in R0
-    fn transform(&self) -> Vec<String> {
+    fn transform(&self, asm: &mut Vec<String>) {
         match self {
             Self::BinOp(op, lhs, rhs) => {
-                let bin_left = matches!(**lhs, Self::BinOp(_, _, _));
-
-                let mut res = rhs.transform();
-
-                if bin_left {
-                    res.push("PU".to_string())
-                } else {
-                    res.push("SW".to_string())
-                }
-
-                res.extend(lhs.transform());
-
-                if bin_left {
-                    res.push("SW".to_string());
-                    res.push("PO".to_string());
-                    res.push("SW".to_string());
+                match (&**lhs, &**rhs) {
+                    (Ast::UnOp(_, _), _) => {
+                        rhs.transform(asm);
+                        asm.push("SW".to_string());
+                        lhs.transform(asm);
+                    }
+                    (Ast::BinOp(_, _, _), Ast::UnOp(_, _)) => {
+                        lhs.transform(asm);
+                        asm.push("SW".to_string());
+                        rhs.transform(asm);
+                    }
+                    (Ast::BinOp(_, _, _), Ast::BinOp(_, _, _)) => {
+                        lhs.transform(asm);
+                        asm.push("PU".to_string());
+                        rhs.transform(asm);
+                        asm.push("SW".to_string());
+                        asm.push("PO".to_string());
+                    }
                 }
 
                 let op = match op.as_str() {
@@ -98,14 +81,15 @@ impl Ast {
                     _ => unreachable!(),
                 };
 
-                res.push(op);
-
-                res
+                asm.push(op);
             }
-
-            Self::UnOp(op, n) if op == "imm" => vec![format!("IM {}", n)],
-            Self::UnOp(op, n) if op == "arg" => vec![format!("AR {}", n)],
-            _ => unreachable!(),
+            Self::UnOp(op, n) => {
+                if op == "imm" {
+                    asm.push(format!("IM {}", n));
+                } else {
+                    asm.push(format!("AR {}", n));
+                }
+            }
         }
     }
 }
@@ -197,7 +181,7 @@ impl Parser {
 
         match bytes.next().unwrap() {
             // number
-            b'0'..=b'9' => Ast::imm(self.tokens.nom().parse::<usize>().unwrap()),
+            b'0'..=b'9' => Ast::UnOp("imm".to_string(), self.tokens.nom().parse().unwrap()),
             // expression
             b'(' => {
                 self.tokens.nom(); // opening paren
@@ -209,7 +193,7 @@ impl Parser {
             _ => {
                 let var = self.tokens.nom();
                 let idx = self.args.get(&var).unwrap();
-                Ast::arg(*idx)
+                Ast::UnOp("arg".to_string(), *idx)
             }
         }
     }
@@ -232,9 +216,7 @@ impl Parser {
     }
 }
 
-struct Compiler {
-    // your code
-}
+struct Compiler;
 
 impl Compiler {
     fn new() -> Compiler {
@@ -290,13 +272,41 @@ impl Compiler {
     }
 
     fn pass3(&mut self, ast: &Ast) -> Vec<String> {
-        ast.transform()
+        let mut asm = vec![];
+        ast.transform(&mut asm);
+        asm
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Helper functions for building ASTs in tests
+    impl Ast {
+        fn imm(n: usize) -> Self {
+            Self::UnOp("imm".to_string(), n)
+        }
+
+        fn arg(idx: usize) -> Self {
+            Self::UnOp("arg".to_string(), idx)
+        }
+        fn add(lhs: Self, rhs: Self) -> Self {
+            Self::BinOp("+".to_string(), Box::new(lhs), Box::new(rhs))
+        }
+
+        fn sub(lhs: Self, rhs: Self) -> Self {
+            Self::BinOp("-".to_string(), Box::new(lhs), Box::new(rhs))
+        }
+
+        fn mul(lhs: Self, rhs: Self) -> Self {
+            Self::BinOp("*".to_string(), Box::new(lhs), Box::new(rhs))
+        }
+
+        fn div(lhs: Self, rhs: Self) -> Self {
+            Self::BinOp("/".to_string(), Box::new(lhs), Box::new(rhs))
+        }
+    }
 
     #[test]
     fn test_pass1_1() {
@@ -414,50 +424,6 @@ mod tests {
     fn simulator() {
         assert_eq!(simulate(vec!["IM 7".to_string()], vec![3]), 7);
         assert_eq!(simulate(vec!["AR 1".to_string()], vec![1, 2, 3]), 2);
-
-        // [ x y ] 6 * x + 5 * y
-        assert_eq!(
-            simulate(
-                vec![
-                    "IM 6".to_string(),
-                    "SW".to_string(),
-                    "AR 0".to_string(),
-                    "MU".to_string(),
-                    "PU".to_string(),
-                    "IM 5".to_string(),
-                    "SW".to_string(),
-                    "AR 1".to_string(),
-                    "MU".to_string(),
-                    "SW".to_string(),
-                    "PO".to_string(),
-                    "AD".to_string(),
-                ],
-                vec![4, 2]
-            ),
-            34
-        );
-
-        // [ x ] 6 * (x + 42)
-        // Mul(6, Add(x + 42))
-        assert_eq!(
-            simulate(
-                vec![
-                    "IM 6".to_string(),
-                    "PU".to_string(),
-                    "AR 0".to_string(),
-                    "SW".to_string(),
-                    "IM 42".to_string(),
-                    "AD".to_string(),
-                    "PU".to_string(),
-                    "PO".to_string(),
-                    "SW".to_string(),
-                    "PO".to_string(),
-                    "MU".to_string(),
-                ],
-                vec![8]
-            ),
-            300
-        );
     }
 
     fn simulate(assembly: Vec<String>, argv: Vec<i32>) -> i32 {
