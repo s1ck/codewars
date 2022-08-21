@@ -10,5 +10,11 @@ license = "MIT"
 
 members = [
   "tiny_three_pass_compiler", # https://www.codewars.com/kata/5265b0885fda8eac5900093b
+  "write_number_in_expanded_form", # https://www.codewars.com/kata/5842df8ccbd22792a4000245
+  "help_the_bookseller", # https://www.codewars.com/kata/54dc6f5a224c26032800005c
+  "who_likes_it", # https://www.codewars.com/kata/5266876b8f4bf2da9b000362
+  "create_phone_number", # https://www.codewars.com/kata/525f50e3b73515a6db000b83
+  "valid_braces", # https://www.codewars.com/kata/5277c8a221e209d3f6000b56
+  "sudoku_solver", # https://www.codewars.com/kata/5296bc77afba8baa690002d7
 ]
 
