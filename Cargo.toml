@@ -17,5 +17,6 @@ members = [
   "valid_braces", # https://www.codewars.com/kata/5277c8a221e209d3f6000b56
   "sudoku_solver", # https://www.codewars.com/kata/5296bc77afba8baa690002d7
   "tic_tac_toe_checker", # https://www.codewars.com/kata/525caa5c1bf619d28c000335
+  "infix_to_postfix_converter", # https://www.codewars.com/kata/52e864d1ffb6ac25db00017f
 ]
 
