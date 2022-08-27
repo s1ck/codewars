@@ -16,5 +16,6 @@ members = [
   "create_phone_number", # https://www.codewars.com/kata/525f50e3b73515a6db000b83
   "valid_braces", # https://www.codewars.com/kata/5277c8a221e209d3f6000b56
   "sudoku_solver", # https://www.codewars.com/kata/5296bc77afba8baa690002d7
+  "tic_tac_toe_checker", # https://www.codewars.com/kata/525caa5c1bf619d28c000335
 ]
 
