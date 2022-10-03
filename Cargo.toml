@@ -18,5 +18,6 @@ members = [
   "sudoku_solver", # https://www.codewars.com/kata/5296bc77afba8baa690002d7
   "tic_tac_toe_checker", # https://www.codewars.com/kata/525caa5c1bf619d28c000335
   "infix_to_postfix_converter", # https://www.codewars.com/kata/52e864d1ffb6ac25db00017f
+  "range_extraction", # https://www.codewars.com/kata/51ba717bb08c1cd60f00002f
 ]
 
