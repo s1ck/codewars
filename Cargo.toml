@@ -21,5 +21,6 @@ members = [
   "range_extraction", # https://www.codewars.com/kata/51ba717bb08c1cd60f00002f
   "unique_in_order", # https://www.codewars.com/kata/54e6533c92449cc251001667
   "the_same", # https://www.codewars.com/kata/550498447451fbbd7600041c
+  "graph_like_sequence", # https://www.codewars.com/kata/60815326bbb0150009f55f7e
 ]
 
